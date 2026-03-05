@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campaign Reach Estimator</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: #0a0e1a;
+            color: #ffffff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        /* Animated background */
+        .bg-animated {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            background: linear-gradient(135deg, #0a0e1a 0%, #1a1f3a 100%);
+        }
+        
+        .bg-animated::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 80%;
+            height: 120%;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
+            animation: pulse 8s ease-in-out infinite;
+        }
+        
+        .bg-animated::after {
+            content: '';
+            position: absolute;
+            bottom: -50%;
+            left: -20%;
+            width: 80%;
+            height: 120%;
+            background: radial-gradient(circle, rgba(168, 85, 247, 0.12) 0%, transparent 70%);
+            animation: pulse 10s ease-in-out infinite reverse;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1) translateY(0); opacity: 1; }
+            50% { transform: scale(1.1) translateY(-20px); opacity: 0.8; }
+        }
+        
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        /* Glass morphism card */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            padding: 2rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .glass-card:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.12);
+            transform: translateY(-4px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Platform pills */
+        .platform-pill {
+            padding: 1rem 2rem;
+            border-radius: 16px;
+            border: 2px solid transparent;
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.6);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+        
+        .platform-pill:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .platform-pill.active-google {
+            background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+            border-color: #60a5fa;
+            color: white;
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.3);
+        }
+        
+        .platform-pill.active-meta {
+            background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+            border-color: #c084fc;
+            color: white;
+            box-shadow: 0 8px 24px rgba(168, 85, 247, 0.3);
+        }
+        
+        .platform-pill.active-tiktok {
+            background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+            border-color: #22d3ee;
+            color: white;
+            box-shadow: 0 8px 24px rgba(6, 182, 212, 0.3);
+        }
+        
+        /* Input styles */
+        .input-field {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            color: white;
+            font-size: 1.125rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        .input-field:focus {
+            outline: none;
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.1);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+        }
+        
+        .input-field::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+        
+        /* Remove number input spinners */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        
+        /* Results metric card */
+        .metric-card {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 16px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 36px rgba(59, 130, 246, 0.2);
+        }
+        
+        .metric-card.purple {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(168, 85, 247, 0.05) 100%);
+            border-color: rgba(168, 85, 247, 0.2);
+        }
+        
+        .metric-card.purple:hover {
+            box-shadow: 0 12px 36px rgba(168, 85, 247, 0.2);
+        }
+        
+        .metric-card.cyan {
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(6, 182, 212, 0.05) 100%);
+            border-color: rgba(6, 182, 212, 0.2);
+        }
+        
+        .metric-card.cyan:hover {
+            box-shadow: 0 12px 36px rgba(6, 182, 212, 0.2);
+        }
+        
+        .metric-card.emerald {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%);
+            border-color: rgba(16, 185, 129, 0.2);
+        }
+        
+        .metric-card.emerald:hover {
+            box-shadow: 0 12px 36px rgba(16, 185, 129, 0.2);
+        }
+        
+        /* Preset buttons */
+        .preset-btn {
+            padding: 0.75rem 1.25rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            color: rgba(255, 255, 255, 0.6);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.875rem;
+        }
+        
+        .preset-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            transform: scale(1.05);
+        }
+        
+        .preset-btn.active {
+            background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+            border-color: #60a5fa;
+            color: white;
+        }
+        
+        /* Loading shimmer */
+        @keyframes shimmer {
+            0% { background-position: -1000px 0; }
+            100% { background-position: 1000px 0; }
+        }
+        
+        .loading-shimmer {
+            background: linear-gradient(
+                90deg,
+                rgba(255, 255, 255, 0.05) 0%,
+                rgba(255, 255, 255, 0.1) 50%,
+                rgba(255, 255, 255, 0.05) 100%
+            );
+            background-size: 1000px 100%;
+            animation: shimmer 2s infinite;
+        }
+        
+        /* Fade in animation */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .fade-in-up {
+            animation: fadeInUp 0.6s ease-out;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .glass-card {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animated"></div>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // ⚙️ CONFIGURATION - Replace with your deployed Apps Script URL
+        const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbwnPgzvKZZE1sbsU4kn9BSq_wy-EKtJ91dBjw_hiGLbGkl4ZxC767EGev7lMVvP_331/exec';
+
+        const App = () => {
+            const [platform, setPlatform] = useState('google');
+            const [audience, setAudience] = useState('M/F, 18-44');
+            const [budget, setBudget] = useState(100000000);
+            const [loading, setLoading] = useState(false);
+            const [results, setResults] = useState(null);
+            const [error, setError] = useState(null);
+
+            const audiences = [
+                { value: 'M/F, 18-44', label: 'M/F, 18-44', pop: 115000000 },
+                { value: 'M/F, 18-34', label: 'M/F, 18-34', pop: 73600000 },
+                { value: 'Female, 25-44', label: 'Female, 25-44', pop: 40800000 },
+                { value: 'M/F, 25-44', label: 'M/F, 25-44', pop: 83500000 },
+            ];
+
+            const platformConfig = {
+                google: { name: 'Google Ads', icon: '📺', class: 'active-google' },
+                meta: { name: 'Meta Ads', icon: '📱', class: 'active-meta' },
+                tiktok: { name: 'TikTok Ads', icon: '🎵', class: 'active-tiktok' }
+            };
+
+            const budgetPresets = [50000000, 100000000, 250000000, 500000000, 750000000, 1000000000];
+
+            // Fetch results from backend
+            const fetchResults = async () => {
+                setLoading(true);
+                setError(null);
+
+                try {
+                    const url = `${BACKEND_URL}?platform=${platform}&audience=${encodeURIComponent(audience)}&budget=${budget}`;
+                    const response = await fetch(url);
+                    const data = await response.json();
+
+                    if (data.error) {
+                        setError(data.error);
+                        setResults(null);
+                    } else {
+                        setResults(data);
+                    }
+                } catch (err) {
+                    setError('Failed to fetch data. Please check your backend URL.');
+                    console.error(err);
+                }
+
+                setLoading(false);
+            };
+
+            useEffect(() => {
+                if (BACKEND_URL !== 'YOUR_APPS_SCRIPT_WEB_APP_URL_HERE') {
+                    fetchResults();
+                }
+            }, [platform, audience, budget]);
+
+            const formatNumber = (num) => {
+                return new Intl.NumberFormat('id-ID').format(num);
+            };
+
+            const formatCurrency = (num) => {
+                return `Rp ${formatNumber(num)}`;
+            };
+
+            const selectedAudience = audiences.find(a => a.value === audience);
+            const reachPercentage = results ? ((results.reach / selectedAudience.pop) * 100).toFixed(1) : 0;
+
+            return (
+                <div className="container">
+                    {/* Header */}
+                    <div style={{ textAlign: 'center', marginBottom: '3rem' }} className="fade-in-up">
+                        <h1 style={{ fontSize: '3rem', fontWeight: '700', marginBottom: '0.5rem', background: 'linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.6) 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                            Campaign Reach Estimator
+                        </h1>
+                        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '1.125rem' }}>
+                            Multi-Platform Media Planning Tool
+                        </p>
+                    </div>
+
+                    {/* Platform Selector */}
+                    <div style={{ marginBottom: '2rem' }} className="fade-in-up">
+                        <div className="glass-card" style={{ padding: '0.75rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                            {Object.entries(platformConfig).map(([key, config]) => (
+                                <button
+                                    key={key}
+                                    onClick={() => setPlatform(key)}
+                                    className={`platform-pill ${platform === key ? config.class : ''}`}
+                                    style={{ flex: '1', minWidth: '200px' }}
+                                >
+                                    <span style={{ marginRight: '0.5rem', fontSize: '1.25rem' }}>{config.icon}</span>
+                                    {config.name}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Main Grid */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
+                        {/* Inputs Card */}
+                        <div className="glass-card fade-in-up" style={{ animationDelay: '0.1s' }}>
+                            <h2 style={{ fontSize: '1.75rem', fontWeight: '700', marginBottom: '2rem', display: 'flex', alignItems: 'center' }}>
+                                <span style={{ marginRight: '0.75rem', fontSize: '2rem' }}>💰</span>
+                                Campaign Inputs
+                            </h2>
+
+                            {/* Audience Selector */}
+                            <div style={{ marginBottom: '1.5rem' }}>
+                                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: 'rgba(255,255,255,0.7)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    Target Audience
+                                </label>
+                                <select
+                                    value={audience}
+                                    onChange={(e) => setAudience(e.target.value)}
+                                    className="input-field"
+                                    style={{ cursor: 'pointer' }}
+                                >
+                                    {audiences.map(aud => (
+                                        <option key={aud.value} value={aud.value} style={{ background: '#1a1f3a', color: 'white' }}>
+                                            {aud.label} ({formatNumber(aud.pop)} population)
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Budget Input */}
+                            <div style={{ marginBottom: '1.5rem' }}>
+                                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: 'rgba(255,255,255,0.7)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    Campaign Budget (IDR)
+                                </label>
+                                <div style={{ position: 'relative' }}>
+                                    <span style={{ position: 'absolute', left: '1.5rem', top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.5)', fontWeight: '600' }}>
+                                        Rp
+                                    </span>
+                                    <input
+                                        type="number"
+                                        value={budget}
+                                        onChange={(e) => setBudget(parseInt(e.target.value) || 0)}
+                                        className="input-field"
+                                        style={{ paddingLeft: '3.5rem', fontSize: '1.5rem' }}
+                                        placeholder="100000000"
+                                    />
+                                </div>
+                                <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: 'rgba(255,255,255,0.4)' }}>
+                                    = {formatCurrency(budget)}
+                                </div>
+                            </div>
+
+                            {/* Budget Presets */}
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', color: 'rgba(255,255,255,0.7)', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    Quick Presets
+                                </label>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
+                                    {budgetPresets.map(preset => (
+                                        <button
+                                            key={preset}
+                                            onClick={() => setBudget(preset)}
+                                            className={`preset-btn ${budget === preset ? 'active' : ''}`}
+                                        >
+                                            {preset / 1000000}M
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Results Card */}
+                        <div className="glass-card fade-in-up" style={{ animationDelay: '0.2s' }}>
+                            <h2 style={{ fontSize: '1.75rem', fontWeight: '700', marginBottom: '2rem', display: 'flex', alignItems: 'center' }}>
+                                <span style={{ marginRight: '0.75rem', fontSize: '2rem' }}>📊</span>
+                                Estimated Results
+                            </h2>
+
+                            {BACKEND_URL === 'YOUR_APPS_SCRIPT_WEB_APP_URL_HERE' ? (
+                                <div style={{ padding: '2rem', textAlign: 'center', color: 'rgba(255,255,255,0.5)' }}>
+                                    <p style={{ fontSize: '1.125rem', marginBottom: '1rem' }}>⚠️ Backend not configured</p>
+                                    <p style={{ fontSize: '0.875rem' }}>Please deploy the Apps Script and update the BACKEND_URL</p>
+                                </div>
+                            ) : loading ? (
+                                <div style={{ display: 'grid', gap: '1rem' }}>
+                                    {[1, 2, 3, 4].map(i => (
+                                        <div key={i} className="loading-shimmer" style={{ height: '100px', borderRadius: '16px' }}></div>
+                                    ))}
+                                </div>
+                            ) : error ? (
+                                <div style={{ padding: '2rem', textAlign: 'center', color: '#ef4444' }}>
+                                    <p style={{ fontSize: '1.125rem', marginBottom: '0.5rem' }}>❌ Error</p>
+                                    <p style={{ fontSize: '0.875rem', color: 'rgba(239,68,68,0.7)' }}>{error}</p>
+                                </div>
+                            ) : results ? (
+                                <div style={{ display: 'grid', gap: '1rem' }}>
+                                    {/* Impressions */}
+                                    <div className="metric-card">
+                                        <div style={{ fontSize: '0.875rem', color: '#93c5fd', fontWeight: '600', marginBottom: '0.5rem' }}>
+                                            👁️ Total Impressions
+                                        </div>
+                                        <div className="mono" style={{ fontSize: '2.25rem', fontWeight: '700', color: 'white' }}>
+                                            {formatNumber(results.impressions)}
+                                        </div>
+                                    </div>
+
+                                    {/* Reach */}
+                                    <div className="metric-card purple">
+                                        <div style={{ fontSize: '0.875rem', color: '#d8b4fe', fontWeight: '600', marginBottom: '0.5rem' }}>
+                                            🎯 Unique Reach
+                                        </div>
+                                        <div className="mono" style={{ fontSize: '2.25rem', fontWeight: '700', color: 'white' }}>
+                                            {formatNumber(results.reach)}
+                                        </div>
+                                        <div style={{ fontSize: '0.875rem', color: '#d8b4fe', marginTop: '0.5rem' }}>
+                                            {reachPercentage}% of audience
+                                        </div>
+                                    </div>
+
+                                    {/* Frequency */}
+                                    <div className="metric-card cyan">
+                                        <div style={{ fontSize: '0.875rem', color: '#67e8f9', fontWeight: '600', marginBottom: '0.5rem' }}>
+                                            🔁 Avg. Frequency
+                                        </div>
+                                        <div className="mono" style={{ fontSize: '2.25rem', fontWeight: '700', color: 'white' }}>
+                                            {results.frequency}x
+                                        </div>
+                                    </div>
+
+                                    {/* CPM */}
+                                    <div className="metric-card emerald">
+                                        <div style={{ fontSize: '0.875rem', color: '#6ee7b7', fontWeight: '600', marginBottom: '0.5rem' }}>
+                                            💵 CPM
+                                        </div>
+                                        <div className="mono" style={{ fontSize: '2.25rem', fontWeight: '700', color: 'white' }}>
+                                            {formatCurrency(results.cpm)}
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : null}
+                        </div>
+                    </div>
+
+                    {/* Footer Note */}
+                    <div style={{ marginTop: '3rem', textAlign: 'center' }}>
+                        <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.875rem' }}>
+                            ⚠️ Estimates based on historical campaign data. Actual results may vary.
+                        </p>
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
